@@ -1,14 +1,22 @@
 package com.geeksmetrics.attendance_mgmt.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
 import java.time.LocalDate;
 
-@Entity @Getter @Setter
+@Entity
+@Table(name = "public_holidays")
+@Data
 public class PublicHoliday {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
     private String name;
-    private LocalDate holidayDate;
-    private String country = "Kuwait";
+
+    @Column(nullable = false, unique = true)
+    private LocalDate date;
+
+    private String description;
 }

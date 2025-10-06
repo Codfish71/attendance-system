@@ -1,75 +1,159 @@
 package com.geeksmetrics.attendance_mgmt.service;
 
-import com.geeksmetrics.attendance_mgmt.entity.Attendance;
-import com.geeksmetrics.attendance_mgmt.entity.PublicHoliday;
-import com.geeksmetrics.attendance_mgmt.entity.User;
-import com.geeksmetrics.attendance_mgmt.repository.AttendanceRepository;
-import com.geeksmetrics.attendance_mgmt.repository.PublicHolidayRepository;
-import com.geeksmetrics.attendance_mgmt.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import com.geeksmetrics.attendance_mgmt.entity.*;
+import com.geeksmetrics.attendance_mgmt.repository.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.time.DayOfWeek;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import org.springframework.transaction.annotation.Transactional;
+import java.time.*;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
+
 public class PayrollService {
-    @Autowired private UserRepository userRepository;
-    @Autowired private AttendanceRepository attendanceRepository;
-    @Autowired private PublicHolidayRepository holidayRepository;
+    private final PayrollRepository payrollRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final LeaveRepository leaveRepository;
+    private final UserRepository userRepository;
+    private final CompanySettingsRepository settingsRepository;
 
-    @Value("${payroll.standard-daily-hours}") private double standardDailyHours;
-    @Value("${payroll.hourly-rate}") private double standardHourlyRate;
-    @Value("${payroll.overtime-rate-multiplier}") private double overtimeMultiplier;
-    @Value("${payroll.weekend-rate-multiplier}") private double weekendMultiplier;
-    @Value("${payroll.holiday-rate-multiplier}") private double holidayMultiplier;
+    public PayrollService(PayrollRepository payrollRepository, AttendanceRepository attendanceRepository, LeaveRepository leaveRepository, UserRepository userRepository, CompanySettingsRepository settingsRepository) {
+        this.payrollRepository = payrollRepository;
+        this.attendanceRepository = attendanceRepository;
+        this.leaveRepository = leaveRepository;
+        this.userRepository = userRepository;
+        this.settingsRepository = settingsRepository;
+    }
 
-    public double calculatePayForPeriod(Long userId, LocalDate startDate, LocalDate endDate) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User Not Found"));
-        double hourlyRate = user.getHourlyRate() != null ? user.getHourlyRate() : standardHourlyRate;
+    @Transactional
+    public Payroll generatePayroll(Long userId, int month, int year) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Attendance> records = attendanceRepository.findByUserAndClockInTimeBetween(
-                user, startDate.atStartOfDay(), endDate.plusDays(1).atStartOfDay()
-        ).stream().filter(a -> a.getStatus() == Attendance.AttendanceStatus.APPROVED).toList();
+        // Check if payroll already exists
+        if (payrollRepository.findByUserAndMonthAndYear(user, month, year).isPresent()) {
+            throw new RuntimeException("Payroll already exists for this period");
+        }
 
-        Map<LocalDate, PublicHoliday> holidays = holidayRepository.findByHolidayDateBetween(startDate, endDate)
-                .stream().collect(Collectors.toMap(PublicHoliday::getHolidayDate, ph -> ph));
+        // Get approved attendances for the month
+        List<Attendance> attendances = attendanceRepository
+                .findApprovedAttendanceByUserAndMonth(userId, year, month);
 
-        double totalPay = 0.0;
+        // Calculate totals
+        double totalRegularHours = 0.0;
+        double totalOvertimeHours = 0.0;
+        double totalWeekendOvertimeHours = 0.0;
+        double totalHolidayOvertimeHours = 0.0;
 
-        for (Attendance record : records) {
-            LocalDateTime clockIn = record.getClockInTime();
-            LocalDateTime clockOut = record.getClockOutTime();
-            if (clockIn == null || clockOut == null) continue;
+        for (Attendance attendance : attendances) {
+            totalRegularHours += attendance.getRegularHours() != null ? attendance.getRegularHours() : 0.0;
+            totalOvertimeHours += attendance.getOvertimeHours() != null ? attendance.getOvertimeHours() : 0.0;
+            totalWeekendOvertimeHours += attendance.getWeekendOvertimeHours() != null ? attendance.getWeekendOvertimeHours() : 0.0;
+            totalHolidayOvertimeHours += attendance.getHolidayOvertimeHours() != null ? attendance.getHolidayOvertimeHours() : 0.0;
+        }
 
-            double hoursWorked = Duration.between(clockIn, clockOut).toMinutes() / 60.0;
-            double standardHours = Math.min(hoursWorked, standardDailyHours);
-            double overtimeHours = Math.max(0, hoursWorked - standardDailyHours);
+        // Add paid leave hours
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
 
-            LocalDate workDate = clockIn.toLocalDate();
-            DayOfWeek day = workDate.getDayOfWeek();
+        List<Leave> paidLeaves = leaveRepository
+                .findApprovedLeavesByUserAndDateRange(userId, startDate, endDate);
 
-            // Base pay for standard hours
-            totalPay += standardHours * hourlyRate;
+        CompanySettings settings = settingsRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("Company settings not configured"));
 
-            // Overtime Calculation
-            if (overtimeHours > 0) {
-                double currentMultiplier = overtimeMultiplier;
-                if (holidays.containsKey(workDate)) {
-                    currentMultiplier = holidayMultiplier;
-                } else if (day == DayOfWeek.FRIDAY || day == DayOfWeek.SATURDAY) { // Weekends in Kuwait
-                    currentMultiplier = weekendMultiplier;
-                }
-                totalPay += overtimeHours * hourlyRate * currentMultiplier;
+        for (Leave leave : paidLeaves) {
+            if (leave.getLeaveType() == LeaveType.PAID || leave.getLeaveType() == LeaveType.SICK) {
+                long leaveDays = calculateWorkingDays(leave.getStartDate(), leave.getEndDate());
+                totalRegularHours += leaveDays * settings.getStandardWorkHoursPerDay();
             }
         }
-        // Add logic for paid leaves
-        return totalPay;
+
+        // Calculate pay
+        double regularPay = totalRegularHours * user.getHourlyRate();
+        double overtimePay = totalOvertimeHours * user.getHourlyRate() * user.getRegularOvertimeMultiplier();
+        double weekendOvertimePay = totalWeekendOvertimeHours * user.getHourlyRate() * user.getWeekendOvertimeMultiplier();
+        double holidayOvertimePay = totalHolidayOvertimeHours * user.getHourlyRate() * user.getHolidayOvertimeMultiplier();
+
+        double totalPay = regularPay + overtimePay + weekendOvertimePay + holidayOvertimePay;
+
+        // Create payroll
+        Payroll payroll = new Payroll();
+        payroll.setUser(user);
+        payroll.setMonth(month);
+        payroll.setYear(year);
+        payroll.setRegularHours(totalRegularHours);
+        payroll.setOvertimeHours(totalOvertimeHours);
+        payroll.setWeekendOvertimeHours(totalWeekendOvertimeHours);
+        payroll.setHolidayOvertimeHours(totalHolidayOvertimeHours);
+        payroll.setRegularPay(regularPay);
+        payroll.setOvertimePay(overtimePay);
+        payroll.setWeekendOvertimePay(weekendOvertimePay);
+        payroll.setHolidayOvertimePay(holidayOvertimePay);
+        payroll.setTotalPay(totalPay);
+        payroll.setPaymentDate(calculatePaymentDate(year, month, settings.getPaymentDay()));
+        payroll.setStatus(PayrollStatus.PENDING);
+
+        return payrollRepository.save(payroll);
+    }
+
+    private long calculateWorkingDays(LocalDate startDate, LocalDate endDate) {
+        long workingDays = 0;
+        LocalDate currentDate = startDate;
+
+        while (!currentDate.isAfter(endDate)) {
+            DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
+            if (dayOfWeek != DayOfWeek.FRIDAY && dayOfWeek != DayOfWeek.SATURDAY) {
+                workingDays++;
+            }
+            currentDate = currentDate.plusDays(1);
+        }
+
+        return workingDays;
+    }
+
+    private LocalDate calculatePaymentDate(int year, int month, int paymentDay) {
+        LocalDate paymentDate = LocalDate.of(year, month, paymentDay);
+        DayOfWeek dayOfWeek = paymentDate.getDayOfWeek();
+
+        // If payment day falls on Friday or Saturday, move to nearest Thursday
+        if (dayOfWeek == DayOfWeek.FRIDAY) {
+            paymentDate = paymentDate.minusDays(1);
+        } else if (dayOfWeek == DayOfWeek.SATURDAY) {
+            paymentDate = paymentDate.minusDays(2);
+        }
+
+        return paymentDate;
+    }
+
+    @Transactional
+    public Payroll processPayroll(Long payrollId) {
+        Payroll payroll = payrollRepository.findById(payrollId)
+                .orElseThrow(() -> new RuntimeException("Payroll not found"));
+
+        payroll.setStatus(PayrollStatus.PROCESSED);
+        return payrollRepository.save(payroll);
+    }
+
+    @Transactional
+    public Payroll markAsPaid(Long payrollId) {
+        Payroll payroll = payrollRepository.findById(payrollId)
+                .orElseThrow(() -> new RuntimeException("Payroll not found"));
+
+        payroll.setStatus(PayrollStatus.PAID);
+        return payrollRepository.save(payroll);
+    }
+
+    public List<Payroll> getPayrollsByMonth(int month, int year) {
+        return payrollRepository.findByMonthAndYear(month, year);
+    }
+
+    public Payroll getUserPayroll(Long userId, int month, int year) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return payrollRepository.findByUserAndMonthAndYear(user, month, year)
+                .orElseThrow(() -> new RuntimeException("Payroll not found"));
     }
 }

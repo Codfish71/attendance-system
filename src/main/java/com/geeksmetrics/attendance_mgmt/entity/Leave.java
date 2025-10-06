@@ -2,12 +2,13 @@ package com.geeksmetrics.attendance_mgmt.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "attendance")
+@Table(name = "leaves")
 @Data
-public class Attendance {
+public class Leave {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -17,29 +18,20 @@ public class Attendance {
     private User user;
 
     @Column(nullable = false)
-    private LocalDateTime checkIn;
-
-    private LocalDateTime checkOut;
+    private LocalDate startDate;
 
     @Column(nullable = false)
-    private Double checkInLatitude;
-
-    @Column(nullable = false)
-    private Double checkInLongitude;
-
-    private Double checkOutLatitude;
-    private Double checkOutLongitude;
-
-    private Double hoursWorked;
-    private Double regularHours;
-    private Double overtimeHours;
-    private Double weekendOvertimeHours;
-    private Double holidayOvertimeHours;
+    private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
-    private AttendanceStatus status = AttendanceStatus.PENDING;
+    @Column(nullable = false)
+    private LeaveType leaveType;
 
-    private String notes;
+    private String reason;
+
+    @Enumerated(EnumType.STRING)
+    private LeaveStatus status = LeaveStatus.PENDING;
+
     private String rejectionReason;
 
     @ManyToOne(fetch = FetchType.LAZY)
