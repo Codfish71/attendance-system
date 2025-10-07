@@ -1,6 +1,5 @@
 package com.geeksmetrics.attendance_mgmt.security;
 
-
 import com.geeksmetrics.attendance_mgmt.dto.UserPrincipal;
 import com.geeksmetrics.attendance_mgmt.entity.User;
 import com.geeksmetrics.attendance_mgmt.repository.UserRepository;
@@ -11,7 +10,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
-
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;

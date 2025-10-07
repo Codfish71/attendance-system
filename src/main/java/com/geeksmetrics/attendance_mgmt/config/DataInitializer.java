@@ -14,8 +14,8 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.util.HashSet;
 
-@Component
 
+@Component
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
@@ -35,8 +35,8 @@ public class DataInitializer implements CommandLineRunner {
         // Initialize company settings if not exists
         if (settingsRepository.count() == 0) {
             CompanySettings settings = new CompanySettings();
-            settings.setOfficeLatitude(29.3759); // Kuwait City example
-            settings.setOfficeLongitude(47.9774);
+            settings.setOfficeLatitude(18.546688); // Kuwait City example
+            settings.setOfficeLongitude(73.940992);
             settings.setProximityRadiusMeters(100.0);
             settings.setStandardWorkHoursPerDay(8.0);
             settings.setPaymentDay(26);

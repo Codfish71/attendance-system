@@ -6,7 +6,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Collectors;
 
 @Getter
@@ -28,12 +27,14 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        // Return the authorities that were initialized in the constructor
+        return authorities;
     }
 
     @Override
     public String getPassword() {
-        return "";
+        // Return the actual password that was initialized in the constructor
+        return password;
     }
 
     @Override
@@ -41,6 +42,7 @@ public class UserPrincipal implements UserDetails {
         return email;
     }
 
+    // The rest of the methods are fine as they are
     @Override
     public boolean isAccountNonExpired() {
         return true;
