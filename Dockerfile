@@ -6,6 +6,9 @@ WORKDIR /app
 COPY build.gradle settings.gradle gradlew ./
 COPY gradle ./gradle
 
+# FIX: Add execute permission to the Gradle wrapper
+RUN chmod +x ./gradlew
+
 # Copy the source code
 COPY src ./src
 
@@ -17,7 +20,6 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # Copy the built JAR file from the 'build' stage
-# Note: The path is /build/libs/ for Gradle, not /target/
 COPY --from=build /app/build/libs/*.jar app.jar
 
 EXPOSE 8080
