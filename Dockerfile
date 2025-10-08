@@ -1,12 +1,24 @@
-FROM gradle:8.5-jdk17 AS build
+# Stage 1: Build the application with Gradle
+FROM gradle:8.4-jdk17-alpine AS build
 WORKDIR /app
-COPY build.gradle settings.gradle ./
-COPY gradle gradle
-COPY src ./src
-RUN gradle clean build -x test --no-daemon
 
+# Copy only the necessary files for dependency resolution first
+COPY build.gradle settings.gradle gradlew ./
+COPY gradle ./gradle
+
+# Copy the source code
+COPY src ./src
+
+# Build the project. --no-daemon is recommended for CI/CD environments.
+RUN ./gradlew build --no-daemon -x test
+
+# Stage 2: Create the final, lightweight image
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
+
+# Copy the built JAR file from the 'build' stage
+# Note: The path is /build/libs/ for Gradle, not /target/
 COPY --from=build /app/build/libs/*.jar app.jar
+
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

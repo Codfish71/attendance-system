@@ -1,10 +1,18 @@
 build/
 !build/libs/*.jar
-.gradle/
-gradle/
-gradlew
-gradlew.bat
+
 *.log
 .git
 bin/
 out/
+
+# Gradle files
+.gradle
+build/
+
+# IDE files
+.idea/
+*.iml
+
+# Log files
+*.log
