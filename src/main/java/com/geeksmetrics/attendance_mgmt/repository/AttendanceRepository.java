@@ -13,9 +13,10 @@ import java.util.Optional;
 
 @Repository
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
-    List<Attendance> findByUserAndCheckInBetween(User user, LocalDateTime start, LocalDateTime end);
 
+    // --- Existing Methods ---
     List<Attendance> findByStatus(AttendanceStatus status);
+    List<Attendance> findByUserAndCheckInBetween(User user, LocalDateTime start, LocalDateTime end);
 
     @Query("SELECT a FROM Attendance a WHERE a.user.id = :userId AND a.checkOut IS NULL ORDER BY a.checkIn DESC")
     Optional<Attendance> findActiveAttendanceByUserId(@Param("userId") Long userId);
@@ -25,5 +26,25 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     @Query("SELECT a FROM Attendance a WHERE YEAR(a.checkIn) = :year AND MONTH(a.checkIn) = :month AND a.user.id = :userId AND a.status = 'APPROVED'")
     List<Attendance> findApprovedAttendanceByUserAndMonth(@Param("userId") Long userId, @Param("year") int year, @Param("month") int month);
-}
 
+
+    // --- New, More Efficient Methods for DTO Mapping ---
+
+    /**
+     * Finds an attendance record by its ID, eagerly fetching the associated user and approver.
+     */
+    @Query("SELECT a FROM Attendance a JOIN FETCH a.user LEFT JOIN FETCH a.approvedBy WHERE a.id = :id")
+    Optional<Attendance> findByIdWithUserAndApprover(@Param("id") Long id);
+
+    /**
+     * Finds all attendance records with a given status, eagerly fetching the associated user.
+     */
+    @Query("SELECT a FROM Attendance a JOIN FETCH a.user WHERE a.status = :status")
+    List<Attendance> findByStatusWithUser(@Param("status") AttendanceStatus status);
+
+    /**
+     * Finds all attendance records for a user within a date range, eagerly fetching the user.
+     */
+    @Query("SELECT a FROM Attendance a JOIN FETCH a.user WHERE a.user = :user AND a.checkIn BETWEEN :start AND :end")
+    List<Attendance> findByUserAndCheckInBetweenWithUser(@Param("user") User user, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+}

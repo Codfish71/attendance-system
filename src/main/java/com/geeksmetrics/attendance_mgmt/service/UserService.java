@@ -24,7 +24,7 @@ public class UserService {
     public UserDto getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-        return userMapper.toDto(user);
+        return userMapper.toDetailDto(user);
     }
 
     @Transactional(readOnly = true)
