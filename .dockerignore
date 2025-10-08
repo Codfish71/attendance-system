@@ -1,7 +1,10 @@
-target/
-!target/*.jar
-.mvn/
-mvnw
-mvnw.cmd
+build/
+!build/libs/*.jar
+.gradle/
+gradle/
+gradlew
+gradlew.bat
 *.log
 .git
+bin/
+out/
