@@ -1,5 +1,7 @@
 package com.geeksmetrics.attendance_mgmt.service;
 
+import com.geeksmetrics.attendance_mgmt.dto.PayrollDto;
+import com.geeksmetrics.attendance_mgmt.dto.UserDto;
 import com.geeksmetrics.attendance_mgmt.entity.*;
 import com.geeksmetrics.attendance_mgmt.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 
@@ -145,8 +148,16 @@ public class PayrollService {
         return payrollRepository.save(payroll);
     }
 
-    public List<Payroll> getPayrollsByMonth(int month, int year) {
-        return payrollRepository.findByMonthAndYear(month, year);
+    // Replace the old getPayrollsByMonth with this new one
+    @Transactional(readOnly = true)
+    public List<PayrollDto> getPayrollsByMonth(int month, int year) {
+        // 1. Fetch entities efficiently using the new method
+        List<Payroll> payrolls = payrollRepository.findByMonthAndYearWithUser(month, year);
+
+        // 2. Map the list of entities to a list of DTOs
+        return payrolls.stream()
+                .map(this::toPayrollDto)
+                .collect(Collectors.toList());
     }
 
     public Payroll getUserPayroll(Long userId, int month, int year) {
@@ -155,5 +166,32 @@ public class PayrollService {
 
         return payrollRepository.findByUserAndMonthAndYear(user, month, year)
                 .orElseThrow(() -> new RuntimeException("Payroll not found"));
+    }
+
+    private PayrollDto toPayrollDto(Payroll payroll) {
+        UserDto userDto = new UserDto();
+        userDto.setId(payroll.getUser().getId());
+        userDto.setFirstName(payroll.getUser().getFirstName());
+        userDto.setLastName(payroll.getUser().getLastName());
+        userDto.setEmail(payroll.getUser().getEmail());
+
+        PayrollDto payrollDto = new PayrollDto();
+        payrollDto.setId(payroll.getId());
+        payrollDto.setMonth(payroll.getMonth());
+        payrollDto.setYear(payroll.getYear());
+        payrollDto.setRegularHours(payroll.getRegularHours());
+        payrollDto.setOvertimeHours(payroll.getOvertimeHours());
+        payrollDto.setWeekendOvertimeHours(payroll.getWeekendOvertimeHours());
+        payrollDto.setHolidayOvertimeHours(payroll.getHolidayOvertimeHours());
+        payrollDto.setRegularPay(payroll.getRegularPay());
+        payrollDto.setOvertimePay(payroll.getOvertimePay());
+        payrollDto.setWeekendOvertimePay(payroll.getWeekendOvertimePay());
+        payrollDto.setHolidayOvertimePay(payroll.getHolidayOvertimePay());
+        payrollDto.setTotalPay(payroll.getTotalPay());
+        payrollDto.setPaymentDate(payroll.getPaymentDate());
+        payrollDto.setStatus(payroll.getStatus());
+        payrollDto.setUser(userDto); // Set the UserDto
+
+        return payrollDto;
     }
 }

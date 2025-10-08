@@ -1,5 +1,6 @@
 package com.geeksmetrics.attendance_mgmt.controller;
 
+import com.geeksmetrics.attendance_mgmt.dto.PayrollDto;
 import com.geeksmetrics.attendance_mgmt.dto.UserPrincipal;
 import com.geeksmetrics.attendance_mgmt.entity.Payroll;
 import com.geeksmetrics.attendance_mgmt.service.PayrollService;
@@ -32,12 +33,15 @@ public class PayrollController {
 
     @GetMapping("/month")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    public ResponseEntity<List<Payroll>> getPayrollsByMonth(
+    // Update the response type to use the DTO
+    public ResponseEntity<List<PayrollDto>> getPayrollsByMonth(
             @RequestParam int month,
             @RequestParam int year) {
-        List<Payroll> payrolls = payrollService.getPayrollsByMonth(month, year);
+        // The service now returns a list of DTOs
+        List<PayrollDto> payrolls = payrollService.getPayrollsByMonth(month, year);
         return ResponseEntity.ok(payrolls);
     }
+
 
     @GetMapping("/my-payroll")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")

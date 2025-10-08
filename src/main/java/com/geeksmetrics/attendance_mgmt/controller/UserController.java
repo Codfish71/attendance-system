@@ -1,8 +1,8 @@
 package com.geeksmetrics.attendance_mgmt.controller;
 
 import com.geeksmetrics.attendance_mgmt.dto.UserPrincipal;
-import com.geeksmetrics.attendance_mgmt.entity.User;
-import com.geeksmetrics.attendance_mgmt.repository.UserRepository;
+import com.geeksmetrics.attendance_mgmt.entity.User;// Import the service
+import com.geeksmetrics.attendance_mgmt.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,35 +12,34 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
-
 public class UserController {
-    private final UserRepository userRepository;
 
-    public UserController(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    private final UserService userService; // Inject the service instead of the repository
+
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     @GetMapping("/me")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<User> getCurrentUser(Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userService.getUserById(userId);
         return ResponseEntity.ok(user);
     }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
     public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userRepository.findAll();
+        // Now calls the optimized service method
+        List<User> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
     public ResponseEntity<User> getUserById(@PathVariable Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userService.getUserById(id);
         return ResponseEntity.ok(user);
     }
 }
