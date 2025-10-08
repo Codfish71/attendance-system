@@ -1,10 +1,11 @@
 package com.geeksmetrics.attendance_mgmt.service;
 
 import com.geeksmetrics.attendance_mgmt.dto.PayrollDto;
-import com.geeksmetrics.attendance_mgmt.dto.UserDto;
+import com.geeksmetrics.attendance_mgmt.dto.UserDto; // Keep if needed for other methods, but not directly for payroll mapping now
 import com.geeksmetrics.attendance_mgmt.entity.*;
+import com.geeksmetrics.attendance_mgmt.mapper.PayrollMapper; // Import the new mapper
 import com.geeksmetrics.attendance_mgmt.repository.*;
-import lombok.RequiredArgsConstructor;
+import lombok.RequiredArgsConstructor; // Good practice for constructor injection
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.*;
@@ -13,29 +14,32 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-
+@RequiredArgsConstructor // Use Lombok for constructor injection
 public class PayrollService {
     private final PayrollRepository payrollRepository;
     private final AttendanceRepository attendanceRepository;
     private final LeaveRepository leaveRepository;
     private final UserRepository userRepository;
     private final CompanySettingsRepository settingsRepository;
+    private final PayrollMapper payrollMapper; // Inject the new mapper
 
-    public PayrollService(PayrollRepository payrollRepository, AttendanceRepository attendanceRepository, LeaveRepository leaveRepository, UserRepository userRepository, CompanySettingsRepository settingsRepository) {
-        this.payrollRepository = payrollRepository;
-        this.attendanceRepository = attendanceRepository;
-        this.leaveRepository = leaveRepository;
-        this.userRepository = userRepository;
-        this.settingsRepository = settingsRepository;
-    }
+    // Constructor can be removed if @RequiredArgsConstructor is used and fields are final
+    // public PayrollService(PayrollRepository payrollRepository, AttendanceRepository attendanceRepository, LeaveRepository leaveRepository, UserRepository userRepository, CompanySettingsRepository settingsRepository, PayrollMapper payrollMapper) {
+    //     this.payrollRepository = payrollRepository;
+    //     this.attendanceRepository = attendanceRepository;
+    //     this.leaveRepository = leaveRepository;
+    //     this.userRepository = userRepository;
+    //     this.settingsRepository = settingsRepository;
+    //     this.payrollMapper = payrollMapper;
+    // }
 
     @Transactional
-    public Payroll generatePayroll(Long userId, int month, int year) {
+    public PayrollDto generatePayroll(Long userId, int month, int year) { // Return PayrollDto
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Check if payroll already exists
-        if (payrollRepository.findByUserAndMonthAndYear(user, month, year).isPresent()) {
+        if (payrollRepository.findByUserAndMonthAndYearWithUser(user, month, year).isPresent()) {
             throw new RuntimeException("Payroll already exists for this period");
         }
 
@@ -98,7 +102,8 @@ public class PayrollService {
         payroll.setPaymentDate(calculatePaymentDate(year, month, settings.getPaymentDay()));
         payroll.setStatus(PayrollStatus.PENDING);
 
-        return payrollRepository.save(payroll);
+        Payroll savedPayroll = payrollRepository.save(payroll);
+        return payrollMapper.toDto(savedPayroll); // Map to DTO before returning
     }
 
     private long calculateWorkingDays(LocalDate startDate, LocalDate endDate) {
@@ -107,7 +112,7 @@ public class PayrollService {
 
         while (!currentDate.isAfter(endDate)) {
             DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
-            if (dayOfWeek != DayOfWeek.FRIDAY && dayOfWeek != DayOfWeek.SATURDAY) {
+            if (dayOfWeek != DayOfWeek.FRIDAY && dayOfWeek != DayOfWeek.SATURDAY) { // Assuming Friday and Saturday are non-working days
                 workingDays++;
             }
             currentDate = currentDate.plusDays(1);
@@ -131,67 +136,44 @@ public class PayrollService {
     }
 
     @Transactional
-    public Payroll processPayroll(Long payrollId) {
-        Payroll payroll = payrollRepository.findById(payrollId)
+    public PayrollDto processPayroll(Long payrollId) { // Return PayrollDto
+        Payroll payroll = payrollRepository.findByIdWithUser(payrollId) // Use new method to fetch user
                 .orElseThrow(() -> new RuntimeException("Payroll not found"));
 
         payroll.setStatus(PayrollStatus.PROCESSED);
-        return payrollRepository.save(payroll);
+        Payroll updatedPayroll = payrollRepository.save(payroll);
+        return payrollMapper.toDto(updatedPayroll); // Map to DTO
     }
 
     @Transactional
-    public Payroll markAsPaid(Long payrollId) {
-        Payroll payroll = payrollRepository.findById(payrollId)
+    public PayrollDto markAsPaid(Long payrollId) { // Return PayrollDto
+        Payroll payroll = payrollRepository.findByIdWithUser(payrollId) // Use new method to fetch user
                 .orElseThrow(() -> new RuntimeException("Payroll not found"));
 
         payroll.setStatus(PayrollStatus.PAID);
-        return payrollRepository.save(payroll);
+        Payroll updatedPayroll = payrollRepository.save(payroll);
+        return payrollMapper.toDto(updatedPayroll); // Map to DTO
     }
 
-    // Replace the old getPayrollsByMonth with this new one
+    // This method is already updated to return List<PayrollDto>
     @Transactional(readOnly = true)
     public List<PayrollDto> getPayrollsByMonth(int month, int year) {
-        // 1. Fetch entities efficiently using the new method
         List<Payroll> payrolls = payrollRepository.findByMonthAndYearWithUser(month, year);
-
-        // 2. Map the list of entities to a list of DTOs
         return payrolls.stream()
-                .map(this::toPayrollDto)
+                .map(payrollMapper::toDto) // Use the injected mapper
                 .collect(Collectors.toList());
     }
 
-    public Payroll getUserPayroll(Long userId, int month, int year) {
+    public PayrollDto getUserPayroll(Long userId, int month, int year) { // Return PayrollDto
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return payrollRepository.findByUserAndMonthAndYear(user, month, year)
+        Payroll payroll = payrollRepository.findByUserAndMonthAndYearWithUser(user, month, year) // Use new method
                 .orElseThrow(() -> new RuntimeException("Payroll not found"));
+
+        return payrollMapper.toDto(payroll); // Map to DTO
     }
 
-    private PayrollDto toPayrollDto(Payroll payroll) {
-        UserDto userDto = new UserDto();
-        userDto.setId(payroll.getUser().getId());
-        userDto.setFirstName(payroll.getUser().getFirstName());
-        userDto.setLastName(payroll.getUser().getLastName());
-        userDto.setEmail(payroll.getUser().getEmail());
-
-        PayrollDto payrollDto = new PayrollDto();
-        payrollDto.setId(payroll.getId());
-        payrollDto.setMonth(payroll.getMonth());
-        payrollDto.setYear(payroll.getYear());
-        payrollDto.setRegularHours(payroll.getRegularHours());
-        payrollDto.setOvertimeHours(payroll.getOvertimeHours());
-        payrollDto.setWeekendOvertimeHours(payroll.getWeekendOvertimeHours());
-        payrollDto.setHolidayOvertimeHours(payroll.getHolidayOvertimeHours());
-        payrollDto.setRegularPay(payroll.getRegularPay());
-        payrollDto.setOvertimePay(payroll.getOvertimePay());
-        payrollDto.setWeekendOvertimePay(payroll.getWeekendOvertimePay());
-        payrollDto.setHolidayOvertimePay(payroll.getHolidayOvertimePay());
-        payrollDto.setTotalPay(payroll.getTotalPay());
-        payrollDto.setPaymentDate(payroll.getPaymentDate());
-        payrollDto.setStatus(payroll.getStatus());
-        payrollDto.setUser(userDto); // Set the UserDto
-
-        return payrollDto;
-    }
+    // Remove the private toPayrollDto method as it's now in PayrollMapper
+    // private PayrollDto toPayrollDto(Payroll payroll) { ... }
 }

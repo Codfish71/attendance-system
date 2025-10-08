@@ -11,7 +11,14 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
+
     boolean existsByEmail(String email);
-    @Query("SELECT u FROM User u JOIN FETCH u.roles")
+
+    // This query is perfect for fetching users with their roles efficiently.
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles")
     List<User> findAllWithRoles();
+
+    // We can add a similar method for fetching a single user by ID with roles.
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.id = :id")
+    Optional<User> findByIdWithRoles(Long id);
 }
