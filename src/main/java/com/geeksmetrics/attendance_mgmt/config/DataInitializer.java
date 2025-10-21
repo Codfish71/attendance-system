@@ -48,7 +48,7 @@ public class DataInitializer implements CommandLineRunner {
         if (!userRepository.existsByEmail("admin@company.com")) {
             User admin = new User();
             admin.setEmail("admin@company.com");
-            admin.setPassword(passwordEncoder.encode("admin123"));
+            admin.setPassword(passwordEncoder.encode("Admin@123"));
             admin.setFirstName("Admin");
             admin.setLastName("User");
             admin.setHourlyRate(50.0);
@@ -60,13 +60,29 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("Admin user created: admin@company.com / admin123");
         }
 
+
+
         // Create sample HR user if not exists
         if (!userRepository.existsByEmail("hr@company.com")) {
             User hr = new User();
             hr.setEmail("hr@company.com");
-            hr.setPassword(passwordEncoder.encode("hr123"));
+            hr.setPassword(passwordEncoder.encode("Hr@123"));
             hr.setFirstName("HR");
             hr.setLastName("Manager");
+            hr.setHourlyRate(40.0);
+            hr.setRoles(new HashSet<>());
+            hr.getRoles().add(Role.ROLE_HR);
+            hr.setActive(true);
+            userRepository.save(hr);
+            System.out.println("HR user created: hr@company.com / hr123");
+        }
+
+        if (!userRepository.existsByEmail("pratham@company.com")) {
+            User hr = new User();
+            hr.setEmail("pratham@company.com");
+            hr.setPassword(passwordEncoder.encode("Hr@123"));
+            hr.setFirstName("Prathamesh");
+            hr.setLastName("Hr");
             hr.setHourlyRate(40.0);
             hr.setRoles(new HashSet<>());
             hr.getRoles().add(Role.ROLE_HR);

@@ -1,0 +1,18 @@
+build/
+!build/libs/*.jar
+
+*.log
+.git
+bin/
+out/
+
+# Gradle files
+.gradle
+build/
+
+# IDE files
+.idea/
+*.iml
+
+# Log files
+*.log

@@ -1,5 +1,6 @@
 package com.geeksmetrics.attendance_mgmt.controller;
 
+import com.geeksmetrics.attendance_mgmt.dto.LeaveDto;
 import com.geeksmetrics.attendance_mgmt.dto.RejectRequest;
 import com.geeksmetrics.attendance_mgmt.dto.UserPrincipal;
 import com.geeksmetrics.attendance_mgmt.entity.Leave;
@@ -13,54 +14,49 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/leaves")
-
+@RequiredArgsConstructor
 public class LeaveController {
     private final LeaveService leaveService;
 
-    public LeaveController(LeaveService leaveService) {
-        this.leaveService = leaveService;
-    }
-
     @PostMapping("/apply")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<Leave> applyLeave(@RequestBody Leave leave, Authentication auth) {
+    public ResponseEntity<LeaveDto> applyLeave(@RequestBody Leave leaveRequest, Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
-        Leave savedLeave = leaveService.applyLeave(userId, leave);
+        LeaveDto savedLeave = leaveService.applyLeave(userId, leaveRequest);
         return ResponseEntity.ok(savedLeave);
     }
 
     @GetMapping("/my-leaves")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<List<Leave>> getMyLeaves(Authentication auth) {
+    public ResponseEntity<List<LeaveDto>> getMyLeaves(Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
-        List<Leave> leaves = leaveService.getUserLeaves(userId);
+        List<LeaveDto> leaves = leaveService.getUserLeaves(userId);
         return ResponseEntity.ok(leaves);
     }
 
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<List<Leave>> getPendingLeaves() {
-        List<Leave> leaves = leaveService.getPendingLeaves();
+    public ResponseEntity<List<LeaveDto>> getPendingLeaves() {
+        List<LeaveDto> leaves = leaveService.getPendingLeaves();
         return ResponseEntity.ok(leaves);
     }
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<Leave> approveLeave(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<LeaveDto> approveLeave(@PathVariable Long id, Authentication auth) {
         Long approverId = ((UserPrincipal) auth.getPrincipal()).getId();
-        Leave leave = leaveService.approveLeave(id, approverId);
+        LeaveDto leave = leaveService.approveLeave(id, approverId);
         return ResponseEntity.ok(leave);
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<Leave> rejectLeave(
+    public ResponseEntity<LeaveDto> rejectLeave(
             @PathVariable Long id,
             @RequestBody RejectRequest request,
             Authentication auth) {
         Long approverId = ((UserPrincipal) auth.getPrincipal()).getId();
-        Leave leave = leaveService.rejectLeave(id, approverId, request.getReason());
+        LeaveDto leave = leaveService.rejectLeave(id, approverId, request.getReason());
         return ResponseEntity.ok(leave);
     }
 }
-

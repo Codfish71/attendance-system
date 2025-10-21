@@ -1,8 +1,10 @@
 package com.geeksmetrics.attendance_mgmt.service;
 
+import com.geeksmetrics.attendance_mgmt.dto.LeaveDto;
 import com.geeksmetrics.attendance_mgmt.entity.Leave;
 import com.geeksmetrics.attendance_mgmt.entity.LeaveStatus;
 import com.geeksmetrics.attendance_mgmt.entity.User;
+import com.geeksmetrics.attendance_mgmt.mapper.LeaveMapper;
 import com.geeksmetrics.attendance_mgmt.repository.LeaveRepository;
 import com.geeksmetrics.attendance_mgmt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,32 +12,36 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
-
+@RequiredArgsConstructor
 public class LeaveService {
     private final LeaveRepository leaveRepository;
     private final UserRepository userRepository;
-
-    public LeaveService(LeaveRepository leaveRepository, UserRepository userRepository) {
-        this.leaveRepository = leaveRepository;
-        this.userRepository = userRepository;
-    }
+    private final LeaveMapper leaveMapper; // Inject the mapper
 
     @Transactional
-    public Leave applyLeave(Long userId, Leave leave) {
+    public LeaveDto applyLeave(Long userId, Leave leaveRequest) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        leave.setUser(user);
-        leave.setStatus(LeaveStatus.PENDING);
+        // Use the leaveRequest object to set properties on a new Leave entity
+        Leave newLeave = new Leave();
+        newLeave.setUser(user);
+        newLeave.setStartDate(leaveRequest.getStartDate());
+        newLeave.setEndDate(leaveRequest.getEndDate());
+        newLeave.setLeaveType(leaveRequest.getLeaveType());
+        newLeave.setReason(leaveRequest.getReason());
+        newLeave.setStatus(LeaveStatus.PENDING);
 
-        return leaveRepository.save(leave);
+        Leave savedLeave = leaveRepository.save(newLeave);
+        return leaveMapper.toDto(savedLeave); // Map to DTO
     }
 
     @Transactional
-    public Leave approveLeave(Long leaveId, Long approverId) {
-        Leave leave = leaveRepository.findById(leaveId)
+    public LeaveDto approveLeave(Long leaveId, Long approverId) {
+        Leave leave = leaveRepository.findByIdWithUserAndApprover(leaveId)
                 .orElseThrow(() -> new RuntimeException("Leave not found"));
 
         User approver = userRepository.findById(approverId)
@@ -45,12 +51,13 @@ public class LeaveService {
         leave.setApprovedBy(approver);
         leave.setApprovedAt(LocalDateTime.now());
 
-        return leaveRepository.save(leave);
+        Leave savedLeave = leaveRepository.save(leave);
+        return leaveMapper.toDto(savedLeave); // Map to DTO
     }
 
     @Transactional
-    public Leave rejectLeave(Long leaveId, Long approverId, String reason) {
-        Leave leave = leaveRepository.findById(leaveId)
+    public LeaveDto rejectLeave(Long leaveId, Long approverId, String reason) {
+        Leave leave = leaveRepository.findByIdWithUserAndApprover(leaveId)
                 .orElseThrow(() -> new RuntimeException("Leave not found"));
 
         User approver = userRepository.findById(approverId)
@@ -61,16 +68,25 @@ public class LeaveService {
         leave.setApprovedAt(LocalDateTime.now());
         leave.setRejectionReason(reason);
 
-        return leaveRepository.save(leave);
+        Leave savedLeave = leaveRepository.save(leave);
+        return leaveMapper.toDto(savedLeave); // Map to DTO
     }
 
-    public List<Leave> getPendingLeaves() {
-        return leaveRepository.findByStatus(LeaveStatus.PENDING);
+    @Transactional(readOnly = true)
+    public List<LeaveDto> getPendingLeaves() {
+        List<Leave> leaves = leaveRepository.findByStatusWithUser(LeaveStatus.PENDING);
+        return leaves.stream()
+                .map(leaveMapper::toDto)
+                .collect(Collectors.toList());
     }
 
-    public List<Leave> getUserLeaves(Long userId) {
+    @Transactional(readOnly = true)
+    public List<LeaveDto> getUserLeaves(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return leaveRepository.findByUserAndStatus(user, LeaveStatus.APPROVED);
+        List<Leave> leaves = leaveRepository.findByUserWithUser(user);
+        return leaves.stream()
+                .map(leaveMapper::toDto)
+                .collect(Collectors.toList());
     }
 }
