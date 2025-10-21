@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -168,10 +169,11 @@ public class PayrollService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Payroll payroll = payrollRepository.findByUserAndMonthAndYearWithUser(user, month, year) // Use new method
-                .orElseThrow(() -> new RuntimeException("Payroll not found"));
+        // MODIFIED: Handle the Optional without throwing an exception
+        Optional<Payroll> payrollOptional = payrollRepository.findByUserAndMonthAndYearWithUser(user, month, year);
 
-        return payrollMapper.toDto(payroll); // Map to DTO
+        // If payroll is found, map it to DTO; otherwise, return null.
+        return payrollOptional.map(payrollMapper::toDto).orElse(null);
     }
 
     // Remove the private toPayrollDto method as it's now in PayrollMapper

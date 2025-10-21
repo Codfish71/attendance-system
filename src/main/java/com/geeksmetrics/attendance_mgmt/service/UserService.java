@@ -31,7 +31,7 @@ public class UserService {
     public List<UserDto> getAllUsers() {
         List<User> users = userRepository.findAllWithRoles();
         return users.stream()
-                .map(userMapper::toDto)
+                .map(userMapper::toDetailDto)
                 .collect(Collectors.toList());
     }
 

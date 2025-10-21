@@ -44,13 +44,17 @@ public class PayrollController {
 
     @GetMapping("/my-payroll")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<PayrollDto> getMyPayroll( // Return PayrollDto
-                                                    @RequestParam int month,
-                                                    @RequestParam int year,
-                                                    Authentication auth) {
+    public ResponseEntity<PayrollDto> getMyPayroll(
+            @RequestParam int month,
+            @RequestParam int year,
+            Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
-        PayrollDto payroll = payrollService.getUserPayroll(userId, month, year); // Service returns DTO
-        return ResponseEntity.ok(payroll);
+        PayrollDto payroll = payrollService.getUserPayroll(userId, month, year);
+
+        if (payroll == null) {
+            return ResponseEntity.notFound().build(); // Return 404 Not Found
+        }
+        return ResponseEntity.ok(payroll); // Return 200 OK with payroll data
     }
 
     @PostMapping("/{id}/process")
