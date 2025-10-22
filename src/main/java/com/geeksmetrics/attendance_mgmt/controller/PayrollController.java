@@ -43,7 +43,7 @@ public class PayrollController {
 
 
     @GetMapping("/my-payroll")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<PayrollDto> getMyPayroll(
             @RequestParam int month,
             @RequestParam int year,

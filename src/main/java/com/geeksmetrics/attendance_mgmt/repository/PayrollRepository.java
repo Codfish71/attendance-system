@@ -32,4 +32,6 @@ public interface PayrollRepository extends JpaRepository<Payroll, Long> {
     // Add a method to fetch a single payroll by ID with its user
     @Query("SELECT p FROM Payroll p JOIN FETCH p.user WHERE p.id = :id")
     Optional<Payroll> findByIdWithUser(@Param("id") Long id);
+
+    Optional<Payroll> findByUserAndMonthAndYear(User user, int month, int year);
 }

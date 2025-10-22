@@ -31,12 +31,6 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     // --- New, More Efficient Methods for DTO Mapping ---
 
     /**
-     * Finds an attendance record by its ID, eagerly fetching the associated user and approver.
-     */
-    @Query("SELECT a FROM Attendance a JOIN FETCH a.user LEFT JOIN FETCH a.approvedBy WHERE a.id = :id")
-    Optional<Attendance> findByIdWithUserAndApprover(@Param("id") Long id);
-
-    /**
      * Finds all attendance records with a given status, eagerly fetching the associated user.
      */
     @Query("SELECT a FROM Attendance a JOIN FETCH a.user WHERE a.status = :status")

@@ -19,7 +19,7 @@ public class CompanySettingsController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<CompanySettings> getSettings() {
         CompanySettings settings = settingsRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new RuntimeException("Settings not found"));

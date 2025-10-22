@@ -18,20 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 
 @Service
-
+@RequiredArgsConstructor
 public class AuthenticationService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-
-    public AuthenticationService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService, AuthenticationManager authenticationManager) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
-        this.authenticationManager = authenticationManager;
-    }
+    private final EmployeeIdService employeeIdService;
 
     @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
@@ -46,12 +40,23 @@ public class AuthenticationService {
         user.setLastName(request.getLastName());
         user.setHourlyRate(request.getHourlyRate());
 
+        // Set roles
         if (request.getRoles() == null || request.getRoles().isEmpty()) {
             user.setRoles(new HashSet<>());
-            user.getRoles().add(Role.ROLE_EMPLOYEE);
+            user.getRoles().add(Role.ROLE_COORDINATOR); // Default role
         } else {
             user.setRoles(request.getRoles());
         }
+
+        // Generate Employee ID based on primary role
+        String primaryRole = user.getRoles().stream()
+                .findFirst()
+                .orElse(Role.ROLE_COORDINATOR)
+                .name();
+
+        String prefix = employeeIdService.getPrefixForRole(primaryRole);
+        String employeeId = employeeIdService.generateEmployeeIdWithPrefix(prefix);
+        user.setEmployeeId(employeeId);
 
         user.setActive(true);
 
@@ -66,6 +71,7 @@ public class AuthenticationService {
                 .firstName(savedUser.getFirstName())
                 .lastName(savedUser.getLastName())
                 .userId(savedUser.getId())
+                .employeeId(savedUser.getEmployeeId())
                 .build();
     }
 
@@ -89,6 +95,7 @@ public class AuthenticationService {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .userId(user.getId())
+                .employeeId(user.getEmployeeId())
                 .build();
     }
 }

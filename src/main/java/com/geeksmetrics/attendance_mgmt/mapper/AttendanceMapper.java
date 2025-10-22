@@ -31,8 +31,8 @@ public class AttendanceMapper {
         dto.setHolidayOvertimeHours(attendance.getHolidayOvertimeHours());
         dto.setStatus(attendance.getStatus());
         dto.setNotes(attendance.getNotes());
-        dto.setRejectionReason(attendance.getRejectionReason());
-        dto.setApprovedAt(attendance.getApprovedAt());
+//        dto.setRejectionReason(attendance.getRejectionReason());
+//        dto.setApprovedAt(attendance.getApprovedAt());
         dto.setCreatedAt(attendance.getCreatedAt());
         dto.setUpdatedAt(attendance.getUpdatedAt());
 
@@ -40,9 +40,9 @@ public class AttendanceMapper {
         if (attendance.getUser() != null) {
             dto.setUser(userMapper.toDto(attendance.getUser()));
         }
-        if (attendance.getApprovedBy() != null) {
-            dto.setApprovedBy(userMapper.toDto(attendance.getApprovedBy()));
-        }
+//        if (attendance.getApprovedBy() != null) {
+//            dto.setApprovedBy(userMapper.toDto(attendance.getApprovedBy()));
+//        }
 
         return dto;
     }

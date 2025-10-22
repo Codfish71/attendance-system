@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor // Use Lombok for constructor injection
+@RequiredArgsConstructor
 public class PayrollService {
     private final PayrollRepository payrollRepository;
     private final AttendanceRepository attendanceRepository;
@@ -24,23 +24,14 @@ public class PayrollService {
     private final CompanySettingsRepository settingsRepository;
     private final PayrollMapper payrollMapper; // Inject the new mapper
 
-    // Constructor can be removed if @RequiredArgsConstructor is used and fields are final
-    // public PayrollService(PayrollRepository payrollRepository, AttendanceRepository attendanceRepository, LeaveRepository leaveRepository, UserRepository userRepository, CompanySettingsRepository settingsRepository, PayrollMapper payrollMapper) {
-    //     this.payrollRepository = payrollRepository;
-    //     this.attendanceRepository = attendanceRepository;
-    //     this.leaveRepository = leaveRepository;
-    //     this.userRepository = userRepository;
-    //     this.settingsRepository = settingsRepository;
-    //     this.payrollMapper = payrollMapper;
-    // }
 
     @Transactional
-    public PayrollDto generatePayroll(Long userId, int month, int year) { // Return PayrollDto
+    public PayrollDto generatePayroll(Long userId, int month, int year) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Check if payroll already exists
-        if (payrollRepository.findByUserAndMonthAndYearWithUser(user, month, year).isPresent()) {
+        if (payrollRepository.findByUserAndMonthAndYear(user, month, year).isPresent()) {
             throw new RuntimeException("Payroll already exists for this period");
         }
 
@@ -113,7 +104,7 @@ public class PayrollService {
 
         while (!currentDate.isAfter(endDate)) {
             DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
-            if (dayOfWeek != DayOfWeek.FRIDAY && dayOfWeek != DayOfWeek.SATURDAY) { // Assuming Friday and Saturday are non-working days
+            if (dayOfWeek != DayOfWeek.FRIDAY && dayOfWeek != DayOfWeek.SATURDAY) {
                 workingDays++;
             }
             currentDate = currentDate.plusDays(1);
@@ -137,8 +128,8 @@ public class PayrollService {
     }
 
     @Transactional
-    public PayrollDto processPayroll(Long payrollId) { // Return PayrollDto
-        Payroll payroll = payrollRepository.findByIdWithUser(payrollId) // Use new method to fetch user
+    public PayrollDto processPayroll(Long payrollId) {
+        Payroll payroll = payrollRepository.findById(payrollId)
                 .orElseThrow(() -> new RuntimeException("Payroll not found"));
 
         payroll.setStatus(PayrollStatus.PROCESSED);
@@ -147,8 +138,8 @@ public class PayrollService {
     }
 
     @Transactional
-    public PayrollDto markAsPaid(Long payrollId) { // Return PayrollDto
-        Payroll payroll = payrollRepository.findByIdWithUser(payrollId) // Use new method to fetch user
+    public PayrollDto markAsPaid(Long payrollId) {
+        Payroll payroll = payrollRepository.findById(payrollId)
                 .orElseThrow(() -> new RuntimeException("Payroll not found"));
 
         payroll.setStatus(PayrollStatus.PAID);
@@ -156,8 +147,6 @@ public class PayrollService {
         return payrollMapper.toDto(updatedPayroll); // Map to DTO
     }
 
-    // This method is already updated to return List<PayrollDto>
-    @Transactional(readOnly = true)
     public List<PayrollDto> getPayrollsByMonth(int month, int year) {
         List<Payroll> payrolls = payrollRepository.findByMonthAndYearWithUser(month, year);
         return payrolls.stream()
@@ -169,13 +158,7 @@ public class PayrollService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // MODIFIED: Handle the Optional without throwing an exception
-        Optional<Payroll> payrollOptional = payrollRepository.findByUserAndMonthAndYearWithUser(user, month, year);
-
-        // If payroll is found, map it to DTO; otherwise, return null.
+        Optional<Payroll> payrollOptional =  payrollRepository.findByUserAndMonthAndYear(user, month, year);
         return payrollOptional.map(payrollMapper::toDto).orElse(null);
     }
-
-    // Remove the private toPayrollDto method as it's now in PayrollMapper
-    // private PayrollDto toPayrollDto(Payroll payroll) { ... }
 }

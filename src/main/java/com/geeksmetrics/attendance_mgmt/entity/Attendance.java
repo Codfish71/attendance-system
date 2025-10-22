@@ -37,16 +37,9 @@ public class Attendance {
     private Double holidayOvertimeHours;
 
     @Enumerated(EnumType.STRING)
-    private AttendanceStatus status = AttendanceStatus.PENDING;
+    private AttendanceStatus status = AttendanceStatus.PROCESSING;
 
     private String notes;
-    private String rejectionReason;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approved_by")
-    private User approvedBy;
-
-    private LocalDateTime approvedAt;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

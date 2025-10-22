@@ -18,7 +18,7 @@ public class PublicHolidayController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<List<PublicHoliday>> getAllHolidays() {
         return ResponseEntity.ok(holidayRepository.findAll());
     }

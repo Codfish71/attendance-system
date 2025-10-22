@@ -18,7 +18,7 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @PostMapping("/check-in")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<AttendanceDto> checkIn(@RequestBody CheckInRequest request, Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
         // Service now returns AttendanceDto
@@ -27,7 +27,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/check-out")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<AttendanceDto> checkOut(@RequestBody CheckOutRequest request, Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
         // Service now returns AttendanceDto
@@ -36,7 +36,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/my-attendances")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<List<AttendanceDto>> getMyAttendances(
             @RequestParam String startDate,
             @RequestParam String endDate,
@@ -49,32 +49,32 @@ public class AttendanceController {
         return ResponseEntity.ok(attendances);
     }
 
-    @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<List<AttendanceDto>> getPendingAttendances() {
-        // Service now returns List<AttendanceDto>
-        List<AttendanceDto> attendances = attendanceService.getPendingAttendances();
-        return ResponseEntity.ok(attendances);
-    }
+//    @GetMapping("/pending")
+//    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
+//    public ResponseEntity<List<AttendanceDto>> getPendingAttendances() {
+//        // Service now returns List<AttendanceDto>
+//        List<AttendanceDto> attendances = attendanceService.getPendingAttendances();
+//        return ResponseEntity.ok(attendances);
+//    }
 
-    @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<AttendanceDto> approveAttendance(@PathVariable Long id, Authentication auth) {
-        Long approverId = ((UserPrincipal) auth.getPrincipal()).getId();
-        // Service now returns AttendanceDto
-        AttendanceDto attendance = attendanceService.approveAttendance(id, approverId);
-        return ResponseEntity.ok(attendance);
-    }
+//    @PostMapping("/{id}/approve")
+//    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
+//    public ResponseEntity<AttendanceDto> approveAttendance(@PathVariable Long id, Authentication auth) {
+//        Long approverId = ((UserPrincipal) auth.getPrincipal()).getId();
+//        // Service now returns AttendanceDto
+//        AttendanceDto attendance = attendanceService.approveAttendance(id, approverId);
+//        return ResponseEntity.ok(attendance);
+//    }
 
-    @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
-    public ResponseEntity<AttendanceDto> rejectAttendance(
-            @PathVariable Long id,
-            @RequestBody RejectRequest request,
-            Authentication auth) {
-        Long approverId = ((UserPrincipal) auth.getPrincipal()).getId();
-        // Service now returns AttendanceDto
-        AttendanceDto attendance = attendanceService.rejectAttendance(id, approverId, request.getReason());
-        return ResponseEntity.ok(attendance);
-    }
+//    @PostMapping("/{id}/reject")
+//    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'ADMIN')")
+//    public ResponseEntity<AttendanceDto> rejectAttendance(
+//            @PathVariable Long id,
+//            @RequestBody RejectRequest request,
+//            Authentication auth) {
+//        Long approverId = ((UserPrincipal) auth.getPrincipal()).getId();
+//        // Service now returns AttendanceDto
+//        AttendanceDto attendance = attendanceService.rejectAttendance(id, approverId, request.getReason());
+//        return ResponseEntity.ok(attendance);
+//    }
 }

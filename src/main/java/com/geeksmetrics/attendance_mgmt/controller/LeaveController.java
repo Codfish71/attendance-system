@@ -19,7 +19,7 @@ public class LeaveController {
     private final LeaveService leaveService;
 
     @PostMapping("/apply")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<LeaveDto> applyLeave(@RequestBody Leave leaveRequest, Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
         LeaveDto savedLeave = leaveService.applyLeave(userId, leaveRequest);
@@ -27,7 +27,7 @@ public class LeaveController {
     }
 
     @GetMapping("/my-leaves")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<List<LeaveDto>> getMyLeaves(Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
         List<LeaveDto> leaves = leaveService.getUserLeaves(userId);

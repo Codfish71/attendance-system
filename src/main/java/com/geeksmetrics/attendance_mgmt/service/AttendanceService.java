@@ -27,6 +27,7 @@ public class AttendanceService {
     private final LocationService locationService;
     private final AttendanceMapper attendanceMapper;
 
+
     @Transactional
     public AttendanceDto checkIn(Long userId, Double latitude, Double longitude) {
         User user = userRepository.findById(userId)
@@ -46,6 +47,10 @@ public class AttendanceService {
                 user, startOfDay, endOfDay
         );
 
+        if (!todayAttendances.isEmpty()) {
+            throw new RuntimeException("You have already marked attendance for today. Only one attendance per day is allowed.");
+        }
+
         // Validate proximity
         CompanySettings settings = settingsRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new RuntimeException("Company settings not configured"));
@@ -55,10 +60,11 @@ public class AttendanceService {
         attendance.setCheckIn(LocalDateTime.now());
         attendance.setCheckInLatitude(latitude);
         attendance.setCheckInLongitude(longitude);
-        attendance.setStatus(AttendanceStatus.PENDING);
+        attendance.setStatus(AttendanceStatus.PROCESSING);
 
         attendanceRepository.save(attendance);
         return attendanceMapper.toDto(attendance);
+
     }
 
     @Transactional
@@ -70,6 +76,7 @@ public class AttendanceService {
         CompanySettings settings = settingsRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new RuntimeException("Company settings not configured"));
 
+
         attendance.setCheckOut(LocalDateTime.now());
         attendance.setCheckOutLatitude(latitude);
         attendance.setCheckOutLongitude(longitude);
@@ -77,8 +84,22 @@ public class AttendanceService {
         // Calculate hours worked
         calculateHours(attendance, settings);
 
+        // Mark as COMPLETED instead of PENDING
+        attendance.setStatus(AttendanceStatus.COMPLETED);
+
         attendanceRepository.save(attendance);
         return attendanceMapper.toDto(attendance);
+    }
+
+    // Remove approve/reject methods - not needed anymore
+
+    public List<AttendanceDto> getUserAttendances(Long userId, LocalDateTime start, LocalDateTime end) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        List<Attendance> attendances = attendanceRepository.findByUserAndCheckInBetween(user, start, end);
+        return attendances.stream()
+                .map(attendanceMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     private void calculateHours(Attendance attendance, CompanySettings settings) {
@@ -118,53 +139,5 @@ public class AttendanceService {
             attendance.setHolidayOvertimeHours(0.0);
         }
     }
-
-    @Transactional
-    public AttendanceDto approveAttendance(Long attendanceId, Long approverId) {
-        Attendance attendance = attendanceRepository.findById(attendanceId)
-                .orElseThrow(() -> new RuntimeException("Attendance not found"));
-
-        User approver = userRepository.findById(approverId)
-                .orElseThrow(() -> new RuntimeException("Approver not found"));
-
-        attendance.setStatus(AttendanceStatus.APPROVED);
-        attendance.setApprovedBy(approver);
-        attendance.setApprovedAt(LocalDateTime.now());
-
-        attendanceRepository.save(attendance);
-        return attendanceMapper.toDto(attendance);
-    }
-
-    @Transactional
-    public AttendanceDto rejectAttendance(Long attendanceId, Long approverId, String reason) {
-        Attendance attendance = attendanceRepository.findById(attendanceId)
-                .orElseThrow(() -> new RuntimeException("Attendance not found"));
-
-        User approver = userRepository.findById(approverId)
-                .orElseThrow(() -> new RuntimeException("Approver not found"));
-
-        attendance.setStatus(AttendanceStatus.REJECTED);
-        attendance.setApprovedBy(approver);
-        attendance.setApprovedAt(LocalDateTime.now());
-        attendance.setRejectionReason(reason);
-
-        attendanceRepository.save(attendance);
-        return attendanceMapper.toDto(attendance);
-    }
-
-    public List<AttendanceDto> getPendingAttendances() {
-        List<Attendance> attendances = attendanceRepository.findByStatus(AttendanceStatus.PENDING);
-        return attendances.stream()
-                .map(attendanceMapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    public List<AttendanceDto> getUserAttendances(Long userId, LocalDateTime start, LocalDateTime end) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        List<Attendance> attendances = attendanceRepository.findByUserAndCheckInBetween(user, start, end);
-        return attendances.stream()
-                .map(attendanceMapper::toDto)
-                .collect(Collectors.toList());
-    }
 }
+

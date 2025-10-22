@@ -2,57 +2,83 @@ package com.geeksmetrics.attendance_mgmt.controller;
 
 import com.geeksmetrics.attendance_mgmt.dto.UserDto;
 import com.geeksmetrics.attendance_mgmt.dto.UserPrincipal;
-import com.geeksmetrics.attendance_mgmt.service.UserService;
+import com.geeksmetrics.attendance_mgmt.entity.User;
+import com.geeksmetrics.attendance_mgmt.mapper.UserMapper;
+import com.geeksmetrics.attendance_mgmt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
-
-    private final UserService userService;
-
-    // --- Existing Endpoints using UserDto ---
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
     public ResponseEntity<UserDto> getCurrentUser(Authentication auth) {
         Long userId = ((UserPrincipal) auth.getPrincipal()).getId();
-        UserDto user = userService.getUserById(userId);
-        return ResponseEntity.ok(user);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(userMapper.toDetailDto(user));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('HR', 'ADMIN', 'PROJECT_MANAGER', 'SITE_LEAD')")
     public ResponseEntity<List<UserDto>> getAllUsers() {
-        List<UserDto> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
+        List<User> users = userRepository.findAll();
+        return ResponseEntity.ok(users.stream()
+                .map(userMapper::toDetailDto)
+                .collect(Collectors.toList()));
     }
 
-    // --- New Endpoints for Detailed User Information ---
-
-    /**
-     * Endpoint for admins/HR to get a complete profile of a user.
-     */
-    @GetMapping("/{id}/details")
+    @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    public ResponseEntity<UserDto> getUserDetailsById(@PathVariable Long id) {
-        UserDto userDetails = userService.getUserDetailsById(id);
-        return ResponseEntity.ok(userDetails);
+    public ResponseEntity<UserDto> getUserById(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(userMapper.toDetailDto(user));
     }
 
-    /**
-     * Endpoint for admins/HR to get a list of all users with their complete profiles.
-     */
-    @GetMapping("/details")
-    @PreAuthorize("hasAnyRole('HR', 'ADMIN')")
-    public ResponseEntity<List<UserDto>> getAllUserDetails() {
-        List<UserDto> allUserDetails = userService.getAllUserDetails();
-        return ResponseEntity.ok(allUserDetails);
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('COORDINATOR', 'SITE_LEAD', 'PROJECT_MANAGER', 'HR', 'ADMIN')")
+    public ResponseEntity<UserDto> updateUser(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates,
+            Authentication auth) {
+        Long currentUserId = ((UserPrincipal) auth.getPrincipal()).getId();
+
+        // Users can only update their own profile
+        if (!currentUserId.equals(id)) {
+            throw new RuntimeException("You can only update your own profile");
+        }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Update only allowed fields
+        if (updates.containsKey("firstName")) {
+            user.setFirstName((String) updates.get("firstName"));
+        }
+        if (updates.containsKey("lastName")) {
+            user.setLastName((String) updates.get("lastName"));
+        }
+        if (updates.containsKey("dateOfBirth")) {
+            user.setDateOfBirth(java.time.LocalDate.parse((String) updates.get("dateOfBirth")));
+        }
+        if (updates.containsKey("profilePhotoUrl")) {
+            user.setProfilePhotoUrl((String) updates.get("profilePhotoUrl"));
+        }
+
+        User updatedUser = userRepository.save(user);
+        return ResponseEntity.ok(userMapper.toDetailDto(updatedUser));
     }
 }
