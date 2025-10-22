@@ -38,6 +38,10 @@ public class UserMapper {
         detailDto.setActive(user.getActive());
         detailDto.setCreatedAt(user.getCreatedAt());
         detailDto.setUpdatedAt(user.getUpdatedAt());
+        detailDto.setEmployeeId(user.getEmployeeId());
+        detailDto.setDateOfBirth(user.getDateOfBirth());
+//        detailDto.setProfilePhotoUrl(user.getProfilePhotoUrl());
+//        detailDto.setReportsTo(user.getReportsTo());
         return detailDto;
     }
 }

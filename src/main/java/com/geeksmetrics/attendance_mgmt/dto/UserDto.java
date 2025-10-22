@@ -1,7 +1,10 @@
 package com.geeksmetrics.attendance_mgmt.dto;
 
 import com.geeksmetrics.attendance_mgmt.entity.Role;
+import com.geeksmetrics.attendance_mgmt.entity.User;
 import lombok.Data;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -19,4 +22,8 @@ public class UserDto {
     private Boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String employeeId;
+    private LocalDate dateOfBirth;
+    private String profilePhotoUrl;
+    private User reportsTo;
 }

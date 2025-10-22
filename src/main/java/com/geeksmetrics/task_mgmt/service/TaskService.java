@@ -3,12 +3,15 @@ package com.geeksmetrics.task_mgmt.service;
 import com.geeksmetrics.attendance_mgmt.entity.Role;
 import com.geeksmetrics.attendance_mgmt.entity.User;
 import com.geeksmetrics.attendance_mgmt.repository.UserRepository;
+import com.geeksmetrics.task_mgmt.dto.TaskDto;
 import com.geeksmetrics.task_mgmt.entity.Task;
 import com.geeksmetrics.task_mgmt.entity.TaskStatus;
+import com.geeksmetrics.task_mgmt.mapper.TaskMapper;
 import com.geeksmetrics.task_mgmt.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,9 +20,10 @@ import java.util.List;
 public class TaskService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final TaskMapper taskMapper;
 
     @Transactional
-    public Task createTask(Long assignedById, Task task) {
+    public TaskDto createTask(Long assignedById, Task task) {
         User assignedBy = userRepository.findById(assignedById)
                 .orElseThrow(() -> new RuntimeException("Assigned by user not found"));
 
@@ -35,7 +39,8 @@ public class TaskService {
         task.setAssignedTo(assignedTo);
         task.setStatus(TaskStatus.ASSIGNED);
 
-        return taskRepository.save(task);
+        taskRepository.save(task);
+        return taskMapper.toDto(task);
     }
 
     private boolean canAssignTask(User assignedBy, User assignedTo) {
@@ -55,7 +60,7 @@ public class TaskService {
     }
 
     @Transactional
-    public Task startTask(Long taskId, Long userId) {
+    public TaskDto startTask(Long taskId, Long userId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
@@ -70,11 +75,12 @@ public class TaskService {
         task.setStatus(TaskStatus.IN_PROGRESS);
         task.setStartedAt(LocalDateTime.now());
 
-        return taskRepository.save(task);
+        taskRepository.save(task);
+        return taskMapper.toDto(task);
     }
 
     @Transactional
-    public Task completeTask(Long taskId, Long userId, String completionNotes) {
+    public TaskDto completeTask(Long taskId, Long userId, String completionNotes) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
@@ -86,7 +92,8 @@ public class TaskService {
         task.setCompletedAt(LocalDateTime.now());
         task.setCompletionNotes(completionNotes);
 
-        return taskRepository.save(task);
+        taskRepository.save(task);
+        return taskMapper.toDto(task);
     }
 
     public List<Task> getMyTasks(Long userId) {
@@ -100,8 +107,9 @@ public class TaskService {
         return taskRepository.findByAssignedById(userId);
     }
 
-    public Task getTaskById(Long id) {
-        return taskRepository.findById(id)
+    public TaskDto getTaskById(Long id) {
+        Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
+        return taskMapper.toDto(task);
     }
 }

@@ -38,19 +38,6 @@ public class AttendanceService {
             throw new RuntimeException("Already checked in. Please check out first.");
         }
 
-        // Check if user already has attendance for today
-        LocalDate today = LocalDate.now();
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = today.atTime(23, 59, 59);
-
-        List<Attendance> todayAttendances = attendanceRepository.findByUserAndCheckInBetween(
-                user, startOfDay, endOfDay
-        );
-
-        if (!todayAttendances.isEmpty()) {
-            throw new RuntimeException("You have already marked attendance for today. Only one attendance per day is allowed.");
-        }
-
         // Validate proximity
         CompanySettings settings = settingsRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new RuntimeException("Company settings not configured"));
