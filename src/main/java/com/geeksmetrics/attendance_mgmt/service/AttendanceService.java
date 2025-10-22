@@ -46,10 +46,6 @@ public class AttendanceService {
                 user, startOfDay, endOfDay
         );
 
-        if (!todayAttendances.isEmpty()) {
-            throw new RuntimeException("You have already marked attendance for today. Only one attendance per day is allowed.");
-        }
-
         // Validate proximity
         CompanySettings settings = settingsRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new RuntimeException("Company settings not configured"));
